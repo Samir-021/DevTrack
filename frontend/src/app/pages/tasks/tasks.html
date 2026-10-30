@@ -1,0 +1,386 @@
+ <div class="tasks-page">
+
+  <header class="page-header">
+    <div class="page-heading">
+      <span class="eyebrow">WORK MANAGEMENT</span>
+      <h1>Tasks</h1>
+      <p>Track progress, manage deadlines, and keep your projects moving.</p>
+    </div>
+    <button
+      class="primary-button"
+      type="button"
+      (click)="scrollToTaskForm()"
+    >
+      <span class="button-plus">+</span>
+      {{ editingTaskId ? 'Edit task' : 'Create task' }}
+    </button>
+  </header>
+
+  <!-- Task summary -->
+  <section class="task-summary-section" aria-label="Task summary">
+    <div class="section-heading">
+      <div>
+        <h2>Task overview</h2>
+        <p>A quick look at your current workload.</p>
+      </div>
+      <span class="summary-total">{{ totalTaskCount }} total tasks</span>
+    </div>
+
+    <div class="summary-grid">
+      <article class="summary-card total-card">
+        <div class="summary-card-top">
+          <span class="summary-label">Total tasks</span>
+          <span class="summary-icon total-icon">▤</span>
+        </div>
+        <strong class="summary-number">{{ totalTaskCount }}</strong>
+        <span class="summary-note">Across your projects</span>
+      </article>
+
+      <article class="summary-card pending-card">
+        <div class="summary-card-top">
+          <span class="summary-label">Pending</span>
+          <span class="summary-icon pending-icon">◷</span>
+        </div>
+        <strong class="summary-number">{{ pendingTaskCount }}</strong>
+        <span class="summary-note">Waiting to be started</span>
+      </article>
+
+      <article class="summary-card progress-card">
+        <div class="summary-card-top">
+          <span class="summary-label">In progress</span>
+          <span class="summary-icon progress-icon">↗</span>
+        </div>
+        <strong class="summary-number">{{ inProgressTaskCount }}</strong>
+        <span class="summary-note">Currently being worked on</span>
+      </article>
+
+      <article class="summary-card completed-card">
+        <div class="summary-card-top">
+          <span class="summary-label">Completed</span>
+          <span class="summary-icon completed-icon">✓</span>
+        </div>
+        <strong class="summary-number">{{ completedTaskCount }}</strong>
+        <span class="summary-note">Successfully finished</span>
+      </article>
+
+      <article class="summary-card overdue-card">
+        <div class="summary-card-top">
+          <span class="summary-label">Overdue</span>
+          <span class="summary-icon overdue-icon">!</span>
+        </div>
+        <strong class="summary-number">{{ overdueTaskCount }}</strong>
+        <span class="summary-note">Past their deadlines</span>
+      </article>
+    </div>
+  </section>
+
+  <!-- Create / edit task -->
+  <section class="task-form-card" id="task-form">
+    <div class="card-heading">
+      <div class="heading-icon">＋</div>
+      <div>
+        <h2>{{ editingTaskId ? 'Edit task' : 'Create a task' }}</h2>
+        <p>
+          {{ editingTaskId
+            ? 'Update the task details below.'
+            : 'Add a task and organize it within a project.' }}
+        </p>
+      </div>
+    </div>
+
+    <form class="task-form" (ngSubmit)="editingTaskId ? saveTask() : createTask()">
+      <div class="form-grid">
+        <div class="field-group field-full">
+          <label for="title">Task title <span class="required-mark">*</span></label>
+          <input
+            id="title"
+            name="title"
+            type="text"
+            [(ngModel)]="title"
+            placeholder="e.g. Build Angular dashboard"
+            required
+          />
+        </div>
+
+        <div class="field-group">
+          <label for="project">Project <span class="required-mark">*</span></label>
+          <select id="project" name="projectId" [(ngModel)]="projectId" required>
+            <option value="" disabled>Select a project</option>
+            <option *ngFor="let project of projects()" [value]="project._id">
+              {{ project.name }}
+            </option>
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label for="status">Status</label>
+          <select id="status" name="status" [(ngModel)]="status">
+            <option value="Pending">Pending</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Completed">Completed</option>
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label for="priority">Priority</label>
+          <select id="priority" name="priority" [(ngModel)]="priority">
+            <option value="Low">Low</option>
+            <option value="Medium">Medium</option>
+            <option value="High">High</option>
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label for="dueDate">Due date</label>
+          <input
+            id="dueDate"
+            name="dueDate"
+            type="date"
+            [(ngModel)]="dueDate"
+          />
+        </div>
+
+        <div class="field-group field-full">
+          <label for="dependencies">Dependencies</label>
+          <select
+            id="dependencies"
+            name="dependencies"
+            [(ngModel)]="selectedDependencies"
+            multiple
+            size="4"
+            class="dependency-select"
+          >
+            <option *ngFor="let task of availableDependencyTasks" [value]="task._id">
+              {{ task.title }}
+            </option>
+          </select>
+          <span class="field-hint">
+            Optional. Select one or more tasks that must be completed first.
+            Use Ctrl (Windows) or Command (Mac) to select multiple tasks.
+          </span>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button class="primary-button" type="submit" [disabled]="creating()">
+          <span *ngIf="!creating()">{{ editingTaskId ? 'Save changes' : 'Create task' }}</span>
+          <span *ngIf="creating()">Creating...</span>
+        </button>
+        <button
+          *ngIf="editingTaskId"
+          class="secondary-button"
+          type="button"
+          (click)="cancelEdit()"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <!-- Feedback -->
+  <div *ngIf="successMessage()" class="feedback-message success-message" role="status">
+    <span class="feedback-symbol">✓</span>
+    {{ successMessage() }}
+  </div>
+
+  <div *ngIf="errorMessage()" class="feedback-message error-message" role="alert">
+    <span class="feedback-symbol">!</span>
+    {{ errorMessage() }}
+  </div>
+
+  <!-- Task list and filters -->
+  <section class="task-list-section">
+    <div class="section-heading task-list-heading">
+      <div>
+        <h2>My tasks</h2>
+        <p>Search, filter, and manage your tasks.</p>
+      </div>
+      <span class="results-count">{{ filteredTasks.length }} shown</span>
+    </div>
+
+    <div class="filters-card">
+      <div class="filter-search">
+        <label for="searchTerm">Search tasks</label>
+        <input
+          id="searchTerm"
+          type="text"
+          name="searchTerm"
+          [(ngModel)]="searchTerm"
+          placeholder="Search by task title..."
+        />
+      </div>
+
+      <div class="filters-grid">
+        <div class="field-group">
+          <label for="projectFilter">Project</label>
+          <select
+            id="projectFilter"
+            name="selectedProjectId"
+            [(ngModel)]="selectedProjectId"
+          >
+            <option value="">All projects</option>
+            <option *ngFor="let project of projects()" [value]="project._id">
+              {{ project.name }}
+            </option>
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label for="selectedStatus">Status</label>
+          <select id="selectedStatus" name="selectedStatus" [(ngModel)]="selectedStatus">
+            <option value="All">All statuses</option>
+            <option value="Pending">Pending</option>
+            <option value="In Progress">In progress</option>
+            <option value="Completed" [disabled]="!canCompleteTask()">Completed</option>
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label for="selectedPriority">Priority</label>
+          <select
+            id="selectedPriority"
+            name="selectedPriority"
+            [(ngModel)]="selectedPriority"
+          >
+            <option value="All">All priorities</option>
+            <option value="High">High priority</option>
+            <option value="Medium">Medium priority</option>
+            <option value="Low">Low priority</option>
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label for="sortBy">Sort by</label>
+          <select id="sortBy" name="sortBy" [(ngModel)]="sortBy">
+            <option value="priority">Priority: High to Low</option>
+            <option value="title-asc">Title: A to Z</option>
+            <option value="title-desc">Title: Z to A</option>
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label for="selectedDueDate">Deadline</label>
+          <select
+            id="selectedDueDate"
+            name="selectedDueDate"
+            [(ngModel)]="selectedDueDate"
+          >
+            <option value="All">All deadlines</option>
+            <option value="Overdue">Overdue</option>
+            <option value="Due today">Due today</option>
+            <option value="Upcoming">Upcoming</option>
+            <option value="No deadline">No deadline</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="loading()" class="state-card">
+      <span class="loading-indicator"></span>
+      <p>Loading tasks...</p>
+    </div>
+
+    <div *ngIf="!loading() && tasks().length === 0" class="state-card empty-state">
+      <div class="empty-state-icon">▤</div>
+      <h3>No tasks yet</h3>
+      <p>Create your first task to start tracking your work.</p>
+      <button class="primary-button" type="button" (click)="scrollToTaskForm()">
+        Create your first task
+      </button>
+    </div>
+
+    <div *ngIf="!loading() && tasks().length > 0 && filteredTasks.length === 0" class="state-card empty-state">
+      <div class="empty-state-icon">⌕</div>
+      <h3>No matching tasks</h3>
+      <p>Try changing your search or filters.</p>
+    </div>
+
+    <div *ngIf="!loading() && filteredTasks.length > 0" class="task-cards">
+      <article class="task-card" *ngFor="let task of filteredTasks">
+        <div class="task-card-main">
+          <div class="task-card-heading">
+            <h3>{{ task.title }}</h3>
+            <span
+              class="status-badge"
+              [ngClass]="{
+                'status-pending': task.status === 'Pending',
+                'status-progress': task.status === 'In Progress',
+                'status-completed': task.status === 'Completed'
+              }"
+            >
+              {{ task.status }}
+            </span>
+          </div>
+
+          <div class="task-meta">
+            <span class="task-meta-item">
+              <span class="meta-label">Project</span>
+              <strong>{{ getProjectName(task.projectId) }}</strong>
+            </span>
+
+            <span class="task-meta-item">
+              <span class="meta-label">Priority</span>
+              <strong
+                class="priority-badge"
+                [ngClass]="{
+                  'priority-high': (task.priority ?? 'Medium') === 'High',
+                  'priority-medium': (task.priority ?? 'Medium') === 'Medium',
+                  'priority-low': (task.priority ?? 'Medium') === 'Low'
+                }"
+              >
+                {{ task.priority ?? 'Medium' }}
+              </strong>
+            </span>
+
+            <span class="task-meta-item">
+              <span class="meta-label">Due date</span>
+              <strong>
+                {{ task.dueDate ? (task.dueDate | date:'mediumDate') : 'No deadline' }}
+              </strong>
+            </span>
+
+            <span
+              class="task-meta-item"
+              [ngClass]="{
+                'deadline-overdue': getDueDateStatus(task) === 'Overdue',
+                'deadline-today': getDueDateStatus(task) === 'Due today',
+                'deadline-completed': getDueDateStatus(task) === 'Completed'
+              }"
+            >
+              <span class="meta-label">Deadline status</span>
+              <strong>{{ getDueDateStatus(task) }}</strong>
+            </span>
+          </div>
+
+          <div class="task-dependencies">
+            <span class="dependency-heading">Depends on</span>
+            <ng-container *ngIf="task.dependencies?.length; else noDependencies">
+              <div class="dependency-list">
+                <span class="dependency-chip" *ngFor="let dependency of task.dependencies">
+                  {{ getDependencyTitle(dependency) }}
+                  <span class="dependency-status">
+                    {{ getDependencyStatus(dependency) }}
+                  </span>
+                </span>
+              </div>
+            </ng-container>
+            <ng-template #noDependencies>
+              <span class="no-dependencies">No dependencies</span>
+            </ng-template>
+          </div>
+        </div>
+
+        <div class="task-card-actions">
+          <button class="secondary-button" type="button" (click)="editTask(task)">
+            Edit
+          </button>
+          <button class="danger-button" type="button" (click)="deleteTask(task)">
+            Delete
+          </button>
+        </div>
+      </article>
+    </div>
+  </section>
+
+</div>

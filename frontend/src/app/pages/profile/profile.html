@@ -1,0 +1,166 @@
+
+<section class="profile-page">
+
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">ACCOUNT SETTINGS</p>
+
+      <h1>My Profile</h1>
+
+      <p class="page-subtitle">
+        Manage your personal information and account details.
+      </p>
+    </div>
+  </header>
+
+
+  <div class="profile-card">
+
+    <!-- PROFILE HEADER -->
+    <div class="profile-banner">
+
+    <div class="profile-avatar-wrapper">
+
+      @if (imagePreview() || profileImage()) {
+        <img
+          class="profile-avatar"
+          [src]="imagePreview() || profileImage()"
+          alt="Profile picture"
+        />
+      } @else {
+        <div class="profile-avatar">
+          {{ name().trim().charAt(0).toUpperCase() || 'U' }}
+        </div>
+      }
+
+      <label
+        class="profile-image-button"
+        for="profile-image"
+      >
+        {{ uploadingImage() ? 'Uploading...' : 'Change photo' }}
+      </label>
+
+      <input
+        id="profile-image"
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        (change)="onImageSelected($event)"
+        [disabled]="uploadingImage()"
+        hidden
+      />
+
+    </div>
+
+      <div class="profile-heading">
+        <h2>{{ name() || 'Your profile' }}</h2>
+        <p>{{ email() }}</p>
+      </div>
+
+    </div>
+
+
+    <!-- PERSONAL INFORMATION -->
+    <div class="form-section">
+
+      <h3>Personal information</h3>
+
+      <p class="section-description">
+        Update the details associated with your DevTrack account.
+      </p>
+
+
+      @if (successMessage()) {
+        <div
+          class="message success-message"
+          role="status"
+        >
+          {{ successMessage() }}
+        </div>
+      }
+
+
+      @if (errorMessage()) {
+        <div
+          class="message error-message"
+          role="alert"
+        >
+          {{ errorMessage() }}
+        </div>
+      }
+
+
+      <form
+        (ngSubmit)="saveProfile()"
+        #profileForm="ngForm"
+      >
+
+        <!-- FULL NAME -->
+        <div class="form-field">
+
+          <label for="profile-name">
+            Full name
+          </label>
+
+          <input
+            id="profile-name"
+            name="name"
+            type="text"
+            [ngModel]="name()"
+            (ngModelChange)="name.set($event)"
+            required
+            minlength="2"
+            maxlength="80"
+            autocomplete="name"
+          />
+
+          <small>
+            Your name will appear in the application sidebar.
+          </small>
+
+        </div>
+
+
+        <!-- EMAIL -->
+        <div class="form-field">
+
+          <label for="profile-email">
+            Email address
+          </label>
+
+          <input
+            id="profile-email"
+            name="email"
+            type="email"
+            [ngModel]="email()"
+            (ngModelChange)="email.set($event)"
+            required
+            maxlength="254"
+            autocomplete="email"
+          />
+
+          <small>
+            Use an email address that belongs to you.
+          </small>
+
+        </div>
+
+
+        <!-- SAVE -->
+        <div class="form-actions">
+
+          <button
+            type="submit"
+            [disabled]="saving() || !profileForm.valid"
+          >
+            {{ saving() ? 'Saving changes…' : 'Save changes' }}
+          </button>
+
+        </div>
+
+      </form>
+
+    </div>
+
+  </div>
+
+</section>

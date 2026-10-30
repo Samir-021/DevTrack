@@ -1,0 +1,152 @@
+
+<div class="app-shell">
+  <div
+    class="sidebar-backdrop"
+    [class.visible]="sidebarOpen()"
+    (click)="closeSidebar()"
+  ></div>
+
+  <aside class="sidebar" [class.open]="sidebarOpen()">
+    <a
+      class="brand"
+      routerLink="/dashboard"
+      aria-label="DevTrack dashboard"
+      (click)="closeSidebar()"
+    >
+      <img
+        class="brand-logo"
+        src="/devtrack-progress-logo.png"
+        alt="DevTrack"
+      />
+    </a>
+    <div class="sidebar-label">WORKSPACE</div>
+
+    <nav class="navigation">
+      <a
+        class="nav-link"
+        routerLink="/dashboard"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }"
+        (click)="closeSidebar()"
+      >
+        <span class="nav-icon">▦</span>
+        <span>Dashboard</span>
+      </a>
+
+      <a
+        class="nav-link"
+        routerLink="/projects"
+        routerLinkActive="active"
+        (click)="closeSidebar()"
+      >
+        <span class="nav-icon">▣</span>
+        <span>Projects</span>
+      </a>
+
+      <a
+        class="nav-link"
+        routerLink="/tasks"
+        routerLinkActive="active"
+        (click)="closeSidebar()"
+      >
+        <span class="nav-icon">✓</span>
+        <span>Tasks</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-label account-label">ACCOUNT</div>
+
+    <nav class="navigation">
+      <a
+        class="nav-link"
+        routerLink="/profile"
+        routerLinkActive="active"
+        (click)="closeSidebar()"
+      >
+        <span class="nav-icon">♙</span>
+        <span>My Profile</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+        @if (currentUser()?.profileImage) {
+            <img
+              class="footer-avatar"
+              [src]="currentUser()!.profileImage"
+              alt="Profile picture"
+            />
+          } @else {
+            <div class="footer-avatar">
+              {{ userInitial }}
+            </div>
+          }
+
+      <div class="footer-copy">
+        <strong>{{ currentUser()?.name || 'User' }}</strong>
+        <span>{{ currentUser()?.email || 'Account' }}</span>
+      </div>
+
+      <button
+        class="logout-button"
+        type="button"
+        aria-label="Log out"
+        title="Log out"
+        (click)="logout()"
+      >
+        ⇥
+      </button>
+    </div>
+  </aside>
+
+  <main class="main-area">
+    <header class="topbar">
+      <button
+        class="menu-button"
+        type="button"
+        aria-label="Toggle navigation"
+        [attr.aria-expanded]="sidebarOpen()"
+        (click)="toggleSidebar()"
+      >
+        ☰
+      </button>
+
+      <div class="breadcrumb">
+        <span>Workspace</span>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-current">DevTrack</span>
+      </div>
+    <div class="topbar-right">
+      <button
+        class="theme-toggle"
+        type="button"
+        (click)="themeService.toggleTheme()"
+        [attr.aria-label]="
+          themeService.theme() === 'dark'
+            ? 'Switch to light mode'
+            : 'Switch to dark mode'
+        "
+        [attr.title]="
+          themeService.theme() === 'dark'
+            ? 'Switch to light mode'
+            : 'Switch to dark mode'
+        "
+      >
+        <span aria-hidden="true">
+          {{ themeService.theme() === 'dark' ? '☀' : '☾' }}
+        </span>
+        <span class="theme-toggle-label">
+          {{ themeService.theme() === 'dark' ? 'Light mode' : 'Dark mode' }}
+        </span>
+      </button>
+
+      <span class="status-dot"></span>
+      <span class="workspace-status">Workspace active</span>
+    </div>
+
+    </header>
+
+    <section class="page-content">
+      <router-outlet />
+    </section>
+  </main>
+</div>

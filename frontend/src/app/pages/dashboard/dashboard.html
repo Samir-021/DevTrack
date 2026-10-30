@@ -1,0 +1,208 @@
+
+<div class="dashboard-page">
+  <header class="dashboard-heading">
+    <div>
+      <span class="eyebrow">WORKSPACE OVERVIEW</span>
+      <h1>{{ pageTitle }}</h1>
+      <p>{{ pageSubtitle }}</p>
+    </div>
+
+    <a routerLink="/projects" class="primary-button">
+      <span class="button-plus">+</span>
+      View Projects
+    </a>
+  </header>
+
+  <div *ngIf="loading()" class="state-card loading-state">
+    <span class="loading-spinner"></span>
+    <div>
+      <strong>Loading your dashboard</strong>
+      <p>Fetching your latest project statistics...</p>
+    </div>
+  </div>
+
+  <div *ngIf="!loading() && errorMessage()" class="state-card error-state">
+    <div class="state-icon">!</div>
+    <div>
+      <strong>Couldn't load your dashboard</strong>
+      <p>{{ errorMessage() }}</p>
+      <button type="button" class="text-button" (click)="loadProjectStats()">
+        Try again
+      </button>
+    </div>
+  </div>
+
+  <ng-container *ngIf="!loading() && !errorMessage()">
+    <section class="overview-section">
+      <div class="section-heading">
+        <div>
+          <h2>Overview</h2>
+          <p>Here's how your work is progressing.</p>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <article class="stat-card">
+          <div class="stat-card-top">
+            <span class="stat-label">Total projects</span>
+            <span class="stat-icon projects-icon">▦</span>
+          </div>
+          <div class="stat-value">{{ totalProjects }}</div>
+          <p class="stat-description">Projects in your workspace</p>
+        </article>
+
+        <article class="stat-card">
+          <div class="stat-card-top">
+            <span class="stat-label">Total tasks</span>
+            <span class="stat-icon tasks-icon">☷</span>
+          </div>
+          <div class="stat-value">{{ totalTasks }}</div>
+          <p class="stat-description">Tasks across all projects</p>
+        </article>
+
+        <article class="stat-card">
+          <div class="stat-card-top">
+            <span class="stat-label">In progress</span>
+            <span class="stat-icon progress-icon">◷</span>
+          </div>
+          <div class="stat-value">{{ inProgressTasks }}</div>
+          <p class="stat-description">Tasks currently underway</p>
+        </article>
+
+        <article class="stat-card">
+          <div class="stat-card-top">
+            <span class="stat-label">Completed tasks</span>
+            <span class="stat-icon completed-icon">✓</span>
+          </div>
+          <div class="stat-value">{{ completedTasks }}</div>
+          <p class="stat-description">Tasks marked completed</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="completion-card">
+      <div class="completion-main">
+        <div class="completion-copy">
+          <span class="eyebrow">OVERALL PROGRESS</span>
+          <h2>Your progress at a glance</h2>
+          <p>Percentage of all tasks that have been completed.</p>
+        </div>
+
+        <div
+          class="completion-percentage"
+          [attr.aria-label]="'Overall completion: ' + overallCompletionPercentage + '%'"
+        >
+          {{ overallCompletionPercentage }}<span>%</span>
+        </div>
+      </div>
+
+      <div
+        class="progress-track overall-track"
+        role="progressbar"
+        aria-label="Overall task completion"
+        [attr.aria-valuenow]="overallCompletionPercentage"
+        aria-valuemin="0"
+        aria-valuemax="100"
+      >
+        <div
+          class="progress-fill overall-fill"
+          [style.width.%]="overallCompletionPercentage"
+        ></div>
+      </div>
+
+      <div class="completion-footer">
+        <span>{{ completedTasks }} completed</span>
+        <span>{{ totalTasks }} total tasks</span>
+      </div>
+    </section>
+
+    <section class="projects-section">
+      <div class="section-heading projects-heading">
+        <div>
+          <h2>Your projects</h2>
+          <p>Progress and task breakdown for each project.</p>
+        </div>
+
+        <a routerLink="/projects" class="secondary-link">
+          All projects <span aria-hidden="true">→</span>
+        </a>
+      </div>
+
+      <div *ngIf="projectStats().length === 0" class="state-card empty-state">
+        <div class="empty-icon">▦</div>
+        <h3>No projects yet</h3>
+        <p>Create your first project to start organizing your work.</p>
+        <a routerLink="/projects" class="primary-button">
+          Go to Projects
+        </a>
+      </div>
+
+      <div *ngIf="projectStats().length > 0" class="project-grid">
+        <article class="project-card" *ngFor="let project of projectStats()">
+          <div class="project-card-header">
+            <div class="project-symbol">
+              {{ project.name.charAt(0).toUpperCase() }}
+            </div>
+
+            <span
+              class="project-status"
+              [ngClass]="'status-' + project.status.toLowerCase().replace(' ', '-')"
+            >
+              {{ project.status }}
+            </span>
+          </div>
+
+          <h3 class="project-name">{{ project.name }}</h3>
+
+          <div class="project-progress-heading">
+            <span>Completion</span>
+            <strong>{{ getCompletionPercentage(project) }}%</strong>
+          </div>
+
+          <div
+            class="progress-track project-track"
+            role="progressbar"
+            [attr.aria-label]="project.name + ' completion'"
+            [attr.aria-valuenow]="getCompletionPercentage(project)"
+            aria-valuemin="0"
+            aria-valuemax="100"
+          >
+            <div
+              class="progress-fill project-fill"
+              [style.width.%]="getCompletionPercentage(project)"
+            ></div>
+          </div>
+
+          <div class="project-task-summary">
+            <div>
+              <span class="task-dot completed-dot"></span>
+              <span>Completed</span>
+              <strong>{{ project.completedTasks }}</strong>
+            </div>
+            <div>
+              <span class="task-dot progress-dot"></span>
+              <span>In progress</span>
+              <strong>{{ project.inProgressTasks }}</strong>
+            </div>
+            <div>
+              <span class="task-dot pending-dot"></span>
+              <span>Pending</span>
+              <strong>{{ project.pendingTasks }}</strong>
+            </div>
+          </div>
+
+          <div class="project-card-footer">
+            <span>{{ project.totalTasks }} total tasks</span>
+            <a
+              [routerLink]="['/tasks']"
+              [queryParams]="{ projectId: project._id }"
+              [attr.aria-label]="'View tasks for ' + project.name"
+            >
+              View tasks <span aria-hidden="true">→</span>
+            </a>
+          </div>
+        </article>
+      </div>
+    </section>
+  </ng-container>
+</div>

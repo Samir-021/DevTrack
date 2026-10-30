@@ -1,0 +1,150 @@
+ <div class="auth-page">
+  <section class="auth-brand-panel">
+    <a class="brand" routerLink="/dashboard" aria-label="DevTrack home">
+      <img
+        class="brand-logo"
+        src="/devtrack-progress-logo.png"
+        alt="DevTrack"
+      />
+    </a>
+
+    <div class="brand-content">
+      <span class="brand-eyebrow">YOUR WORKSPACE. YOUR PROGRESS.</span>
+      <h2>Turn your plans into <span>progress.</span></h2>
+      <p>
+        Organize projects, manage tasks, collaborate with your team,
+        and make every step count.
+      </p>
+
+      <div class="feature-list">
+        <div class="feature-item">
+          <span class="feature-icon">✓</span>
+          <span>Keep your projects organized</span>
+        </div>
+        <div class="feature-item">
+          <span class="feature-icon">↗</span>
+          <span>Track progress with clarity</span>
+        </div>
+        <div class="feature-item">
+          <span class="feature-icon">◎</span>
+          <span>Work better, together</span>
+        </div>
+      </div>
+    </div>
+
+    <p class="brand-caption">A clearer path from ideas to achievement.</p>
+  </section>
+
+  <section class="auth-form-panel">
+
+    <button
+      class="theme-toggle"
+      type="button"
+      (click)="themeService.toggleTheme()"
+      [attr.aria-label]="
+        themeService.theme() === 'dark'
+          ? 'Switch to light mode'
+          : 'Switch to dark mode'
+      "
+      [attr.title]="
+        themeService.theme() === 'dark'
+          ? 'Switch to light mode'
+          : 'Switch to dark mode'
+      "
+    >
+      @if (themeService.theme() === 'dark') {
+        <span aria-hidden="true">☀</span>
+        <span>Light mode</span>
+      } @else {
+        <span aria-hidden="true">☾</span>
+        <span>Dark mode</span>
+      }
+    </button>
+
+    <div class="auth-card">
+      <a class="mobile-brand" routerLink="/dashboard" aria-label="DevTrack home">
+        <img
+          class="brand-logo"
+          src="/devtrack-progress-logo.png"
+          alt="DevTrack"
+        />
+      </a>
+
+      <div class="form-heading">
+        <span class="welcome-label">WELCOME BACK</span>
+        <h1>Sign in to DevTrack</h1>
+        <p class="subtitle">
+          Pick up where you left off and keep your projects moving.
+        </p>
+      </div>
+
+      @if (registeredMessage) {
+        <div class="message success" role="status">
+          <span class="message-icon">✓</span>
+          <span>{{ registeredMessage }}</span>
+        </div>
+      }
+
+      @if (errorMessage) {
+        <div class="message error" role="alert">
+          <span class="message-icon">!</span>
+          <span>{{ errorMessage }}</span>
+        </div>
+      }
+
+      <form #loginForm="ngForm" (ngSubmit)="onLogin()">
+        <div class="field-group">
+          <label for="email">Email address</label>
+          <input
+            id="email"
+            type="email"
+            name="email"
+            [(ngModel)]="email"
+            required
+            email
+            autocomplete="email"
+            placeholder="you@example.com"
+          />
+        </div>
+
+        <div class="field-group">
+          <label for="password">Password</label>
+          <input
+            id="password"
+            type="password"
+            name="password"
+            [(ngModel)]="password"
+            required
+            autocomplete="current-password"
+            placeholder="Enter your password"
+          />
+        </div>
+
+        <button
+          class="login-button"
+          type="submit"
+          [disabled]="loginForm.invalid || loading"
+        >
+          <span>{{ loading ? 'Signing you in...' : 'Sign in' }}</span>
+          @if (!loading) {
+            <span class="button-arrow" aria-hidden="true">→</span>
+          }
+        </button>
+      </form>
+
+      <div class="auth-divider">
+        <span>NEW TO DEVTRACK?</span>
+      </div>
+
+      <p class="auth-footer">
+        Don't have an account?
+        <a routerLink="/register">Create an account <span aria-hidden="true">↗</span></a>
+      </p>
+
+      <p class="security-note">
+        <span aria-hidden="true">◈</span>
+        Your workspace starts with a secure sign-in.
+      </p>
+    </div>
+  </section>
+</div>

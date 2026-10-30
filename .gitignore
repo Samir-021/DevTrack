@@ -1,0 +1,43 @@
+
+# =========================
+# Environment variables
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# Dependencies
+# =========================
+**/node_modules/
+
+# =========================
+# Build output and caches
+# =========================
+**/dist/
+**/tmp/
+**/out-tsc/
+**/.angular/cache/
+**/coverage/
+
+
+# =========================
+# Logs
+# =========================
+*.log
+npm-debug.log*
+yarn-error.log
+
+# =========================
+# IDE and editor files
+# =========================
+.idea/
+.history/
+*.sublime-workspace
+
+# =========================
+# System files
+# =========================
+.DS_Store
+Thumbs.db
+desktop.ini

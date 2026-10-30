@@ -1,0 +1,326 @@
+
+<div class="projects-page">
+  <header class="projects-heading">
+    <div>
+      <span class="eyebrow">WORKSPACE MANAGEMENT</span>
+      <h1>Projects</h1>
+      <p>Organize your work, track progress, and collaborate with your team.</p>
+    </div>
+    <button
+      class="primary-button"
+      type="button"
+      (click)="scrollToCreateProject()"
+    >
+      <span class="button-plus">+</span>
+      Create a project
+    </button>
+  </header>
+
+  <div class="project-summary">
+    <div class="summary-card">
+      <span class="summary-icon total-icon">▦</span>
+      <div>
+        <span class="summary-label">Total projects</span>
+        <strong>{{ projects().length }}</strong>
+      </div>
+    </div>
+
+    <div class="summary-card">
+      <span class="summary-icon active-icon">◷</span>
+      <div>
+        <span class="summary-label">In progress</span>
+        <strong>
+          {{ projects().filter(p => p.status === 'In Progress').length }}
+        </strong>
+      </div>
+    </div>
+
+    <div class="summary-card">
+      <span class="summary-icon completed-icon">✓</span>
+      <div>
+        <span class="summary-label">Completed</span>
+        <strong>
+          {{ projects().filter(p => p.status === 'Completed').length }}
+        </strong>
+      </div>
+    </div>
+  </div>
+
+  @if (errorMessage()) {
+    <div class="feedback-message error-message" role="alert">
+      <span>{{ errorMessage() }}</span>
+      <button type="button" (click)="loadProjects()">Retry</button>
+    </div>
+  }
+
+  <section class="create-card" id="create-project">
+    <div class="form-heading">
+      <div class="form-heading-icon">+</div>
+      <div>
+        <h2>Create a new project</h2>
+        <p>Give your project a name and choose its current status.</p>
+      </div>
+    </div>
+
+    <form
+      class="project-form"
+      #createForm="ngForm"
+      (ngSubmit)="createProject(newProjectName.value, newProjectStatus.value); createForm.resetForm({status: 'In Progress'})"
+    >
+      <div class="field-group name-field">
+        <label for="new-project-name">Project name</label>
+        <input
+          id="new-project-name"
+          name="name"
+          type="text"
+          placeholder="e.g. Student Portal"
+          required
+          maxlength="120"
+          #newProjectName
+        />
+      </div>
+
+      <div class="field-group status-field">
+        <label for="new-project-status">Status</label>
+        <select
+          id="new-project-status"
+          name="status"
+          required
+          #newProjectStatus
+        >
+          <option value="In Progress">In Progress</option>
+          <option value="Completed">Completed</option>
+        </select>
+      </div>
+
+      <button class="primary-button submit-button" type="submit">
+        Create project <span aria-hidden="true">→</span>
+      </button>
+    </form>
+  </section>
+
+  @if (editingProject(); as project) {
+    <section class="edit-card">
+      <div class="form-heading">
+        <div class="form-heading-icon edit-icon">✎</div>
+        <div>
+          <h2>Edit project</h2>
+          <p>Update the details for {{ project.name }}.</p>
+        </div>
+      </div>
+
+      <form
+        class="project-form"
+        #editForm="ngForm"
+        (ngSubmit)="saveProject(editName.value, editStatus.value)"
+      >
+        <div class="field-group name-field">
+          <label for="edit-project-name">Project name</label>
+          <input
+            id="edit-project-name"
+            name="editName"
+            type="text"
+            [value]="project.name"
+            required
+            maxlength="120"
+            #editName
+          />
+        </div>
+
+        <div class="field-group status-field">
+          <label for="edit-project-status">Status</label>
+          <select
+            id="edit-project-status"
+            name="editStatus"
+            [value]="project.status"
+            required
+            #editStatus
+          >
+            <option value="In Progress">In Progress</option>
+            <option value="Completed">Completed</option>
+          </select>
+        </div>
+
+        <div class="edit-actions">
+          <button class="primary-button submit-button" type="submit">
+            Save changes
+          </button>
+          <button class="secondary-button" type="button" (click)="cancelEdit()">
+            Cancel
+          </button>
+        </div>
+      </form>
+    </section>
+  }
+
+  <section class="project-list-section">
+    <div class="section-heading">
+      <div>
+        <h2>Your projects</h2>
+        <p>Manage projects and review their team members.</p>
+      </div>
+      <span class="count-badge">{{ projects().length }} projects</span>
+    </div>
+
+    @if (loading()) {
+      <div class="empty-state">
+        <span class="loading-spinner"></span>
+        <p>Loading your projects...</p>
+      </div>
+    } @else if (projects().length === 0) {
+      <div class="empty-state">
+        <div class="empty-state-icon">▦</div>
+        <h3>No projects yet</h3>
+        <p>Create your first project to start organizing your work.</p>
+       <button
+          type="button"
+          class="primary-button"
+          (click)="scrollToCreateProject()"
+        >
+          Create your first project
+        </button>
+      </div>
+    } @else {
+      <div class="project-list">
+        @for (project of projects(); track project._id) {
+          <article class="project-card">
+            <div class="project-card-main">
+              <div class="project-card-title">
+                <div class="project-symbol">
+                  {{ project.name.charAt(0).toUpperCase() }}
+                </div>
+
+                <div class="project-title-copy">
+                  <h3>{{ project.name }}</h3>
+                  <!-- <p>Project ID: <span>{{ project._id }}</span></p> -->
+                </div>
+              </div>
+
+              <span
+                class="project-status"
+                [class.status-completed]="project.status === 'Completed'"
+                [class.status-progress]="project.status === 'In Progress'"
+              >
+                <span class="status-dot"></span>
+                {{ project.status }}
+              </span>
+            </div>
+
+            <div class="project-card-actions">
+              @if (isOwner(project)) {
+                <button
+                  class="secondary-button"
+                  type="button"
+                  (click)="editProject(project)"
+                >
+                  <span aria-hidden="true">✎</span> Edit
+                </button>
+
+                <button
+                  class="danger-button"
+                  type="button"
+                  (click)="deleteProject(project._id)"
+                >
+                  <span aria-hidden="true">×</span> Delete
+                </button>
+              }
+            </div>
+
+            @if (isOwner(project)) {
+              <div class="member-management">
+                <div class="member-section-heading">
+                  <div>
+                    <h4>Team members</h4>
+                    <p>Add collaborators and control their project role.</p>
+                  </div>
+                  <span class="member-count">
+                    {{ project.members?.length ?? 0 }}
+                  </span>
+                </div>
+
+                <form
+                  class="member-form"
+                  #memberForm="ngForm"
+                  (ngSubmit)="addMember(project._id, memberEmail.value, memberRole.value); memberForm.resetForm({role: 'developer'})"
+                >
+                  <div class="field-group member-email-field">
+                    <label [for]="'member-email-' + project._id">Member email</label>
+                    <input
+                      [id]="'member-email-' + project._id"
+                      name="memberEmail"
+                      type="email"
+                      placeholder="name@example.com"
+                      required
+                      email
+                      #memberEmail
+                    />
+                  </div>
+
+                  <div class="field-group member-role-field">
+                    <label [for]="'member-role-' + project._id">Role</label>
+                    <select
+                      [id]="'member-role-' + project._id"
+                      name="role"
+                      #memberRole
+                    >
+                      <option value="developer">Developer</option>
+                      <option value="viewer">Viewer</option>
+                    </select>
+                  </div>
+
+                  <button class="secondary-button add-member-button" type="submit">
+                    + Add member
+                  </button>
+                </form>
+
+                @if (memberMessage()) {
+                  <p class="member-feedback" role="status">{{ memberMessage() }}</p>
+                }
+              </div>
+            }
+
+            <div class="members-list">
+              <h4>Project members</h4>
+
+              @if (project.members?.length) {
+                @for (member of project.members; track member._id ?? $index) {
+                  <div class="member-row">
+                    <div class="member-avatar">
+                      {{ (getMemberName(member) || '?').charAt(0).toUpperCase() }}
+                    </div>
+
+                    <div class="member-identity">
+                      <strong>{{ getMemberName(member) }}</strong>
+                      <span>{{ getMemberEmail(member) || 'Member details unavailable' }}</span>
+                    </div>
+
+                    <span
+                      class="role-badge"
+                      [class.developer-role]="member.role === 'developer'"
+                      [class.viewer-role]="member.role === 'viewer'"
+                    >
+                      {{ member.role }}
+                    </span>
+
+                    @if (isOwner(project)) {
+                      <button
+                        class="remove-member-button"
+                        type="button"
+                        [attr.aria-label]="'Remove ' + getMemberName(member)"
+                        (click)="removeMember(project._id, member)"
+                      >
+                        Remove
+                      </button>
+                    }
+                  </div>
+                }
+              } @else {
+                <p class="no-members">No members have been added to this project.</p>
+              }
+            </div>
+          </article>
+        }
+      </div>
+    }
+  </section>
+</div>
