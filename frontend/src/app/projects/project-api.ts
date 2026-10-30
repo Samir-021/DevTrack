@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { API_BASE_URL } from '../config/api.config';
 
 export interface ProjectUser {
   _id: string;
@@ -32,7 +33,7 @@ export interface AddMemberResponse {
   providedIn: 'root'
 })
 export class ProjectApi {
-  private apiUrl = 'http://localhost:3000/projects';
+  private apiUrl = `${API_BASE_URL}/projects`;
 
   constructor(private http: HttpClient) {}
 

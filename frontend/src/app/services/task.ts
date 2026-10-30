@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { API_BASE_URL } from '../config/api.config';
 
 export interface Task {
   _id?: string;
@@ -31,8 +32,9 @@ export interface Project {
   providedIn: 'root'
 })
 export class TaskService {
-  private apiUrl = 'http://localhost:3000/tasks';
-  private projectsUrl = 'http://localhost:3000/projects';
+  
+    private apiUrl = `${API_BASE_URL}/tasks`;
+    private projectsUrl = `${API_BASE_URL}/projects`;
 
   constructor(private http: HttpClient) {}
 
