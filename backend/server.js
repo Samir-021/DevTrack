@@ -13,11 +13,20 @@ import { User } from './models/user.js';
 const app = express();
 
 dns.setServers(['1.1.1.1']);
-app.use(cors());
+
+const allowedOrigins = [
+  'http://localhost:4200',
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
+app.use(cors({
+  origin: allowedOrigins
+}));
+
 app.use(express.json());
 app.use('/auth', authRoutes);
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
