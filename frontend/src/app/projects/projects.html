@@ -46,13 +46,6 @@
     </div>
   </div>
 
-  @if (errorMessage()) {
-    <div class="feedback-message error-message" role="alert">
-      <span>{{ errorMessage() }}</span>
-      <button type="button" (click)="loadProjects()">Retry</button>
-    </div>
-  }
-
   <section class="create-card" id="create-project">
     <div class="form-heading">
       <div class="form-heading-icon">+</div>

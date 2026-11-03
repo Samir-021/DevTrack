@@ -1,3 +1,4 @@
+
 import mongoose from 'mongoose';
 
 const taskSchema = new mongoose.Schema({
@@ -26,6 +27,13 @@ const taskSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Project',
     required: true
+  },
+
+  // The user responsible for completing this task.
+  assignedTo: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
   },
 
   dependencies: [

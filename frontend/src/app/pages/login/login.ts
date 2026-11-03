@@ -40,7 +40,7 @@ export class Login {
       this.loading = true;
 
       this.authService
-        .login(this.email, this.password)
+        .login(this.email.trim(), this.password)
         .subscribe({
           next: () => {
             this.loading = false;

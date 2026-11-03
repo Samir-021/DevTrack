@@ -10,6 +10,7 @@ import { AuthService } from '../../services/auth';
 import { NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs';
 import { ThemeService } from '../../services/theme';
+import { NotificationService } from '../../services/notification';
 
 interface LayoutUser {
   id: string;
@@ -30,6 +31,7 @@ export class AppLayout {
   private readonly router = inject(Router);
   protected readonly themeService = inject(ThemeService);
   protected readonly sidebarOpen = signal(false);
+  protected readonly notificationService = inject(NotificationService);
   protected readonly currentUser = signal<LayoutUser | null>(
     this.authService.getUser()
   );
@@ -53,7 +55,6 @@ export class AppLayout {
     this.closeSidebar();
     void this.router.navigateByUrl('/login');
   }
-
   constructor() {
   this.router.events
     .pipe(

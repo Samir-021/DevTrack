@@ -89,6 +89,20 @@ function canManageProject(role) {
   return role === 'owner';
 }
 
+function isEligibleAssignee(project, userId) {
+  // The project owner can be assigned tasks.
+  if (project.owner.toString() === userId.toString()) {
+    return true;
+  }
+
+  // Only developer members can be assigned tasks.
+  return project.members.some(
+    (member) =>
+      member.user.toString() === userId.toString() &&
+      member.role === 'developer'
+  );
+}
+
 app.get('/projects', async (req, res) => {
   try {
     const projects = await Project.find({
@@ -347,6 +361,7 @@ app.post('/tasks', async (req, res) => {
       priority = 'Medium',
       dueDate,
       projectId,
+      assignedTo,
       dependencies = []
     } = req.body;
 
@@ -383,7 +398,19 @@ app.post('/tasks', async (req, res) => {
       });
     }
 
-    // 5. Validate dependency IDs, self-dependency,
+    // 5. Validate the selected assignee.
+    const assigneeId = assignedTo || null;
+
+    if (
+      assigneeId &&
+      !isEligibleAssignee(project, assigneeId)
+    ) {
+      return res.status(400).json({
+        message: 'The selected user cannot be assigned to this task.'
+      });
+    }
+
+    // 6. Validate dependency IDs, self-dependency,
     // duplicate dependencies, and project membership.
     const dependencyError = await validateDependencies(
       dependencies,
@@ -398,7 +425,7 @@ app.post('/tasks', async (req, res) => {
       });
     }
 
-    // 6. A task can be completed only when
+    // 7. A task can be completed only when
     // all its dependencies are completed.
     if (status === 'Completed') {
       const canComplete =
@@ -412,20 +439,22 @@ app.post('/tasks', async (req, res) => {
       }
     }
 
-    // 7. Create the task.
+    // 8. Create the task.
     const task = await Task.create({
       title: title.trim(),
       status,
       priority,
       dueDate: dueDate || undefined,
       projectId,
+      assignedTo: assigneeId,
       dependencies
     });
 
-    // 8. Populate project and dependency details.
+    // 9. Populate project and dependency details.
     const populatedTask = await task.populate([
       { path: 'projectId', select: 'name' },
-      { path: 'dependencies', select: 'title status priority' }
+      { path: 'dependencies', select: 'title status priority' },
+      { path: 'assignedTo', select: 'name email' }
     ]);
 
     return res.status(201).json(populatedTask);
@@ -459,7 +488,8 @@ app.get('/tasks', async (req, res) => {
       projectId: { $in: projectIds }
     })
       .populate('projectId', 'name')
-      .populate('dependencies', 'title status priority');
+      .populate('dependencies', 'title status priority')
+      .populate('assignedTo', 'name email');
 
     res.status(200).json(tasks);
 
@@ -482,22 +512,25 @@ app.put('/tasks/:id', async (req, res) => {
       projectId,
       priority,
       dueDate,
+      assignedTo,
       dependencies = []
     } = req.body;
 
+    // 1. Validate required fields.
     if (!title?.trim() || !projectId) {
       return res.status(400).json({
         message: 'Task title and project are required.'
       });
     }
 
+    // 2. Validate dependencies input.
     if (!Array.isArray(dependencies)) {
       return res.status(400).json({
         message: 'Dependencies must be an array of task IDs.'
       });
     }
 
-
+    // 3. Find the existing task.
     const task = await Task.findById(req.params.id);
 
     if (!task) {
@@ -506,6 +539,7 @@ app.put('/tasks/:id', async (req, res) => {
       });
     }
 
+    // 4. Determine the user's role in this project.
     const { project, role } = await getProjectAccess(
       task.projectId,
       req.user._id
@@ -517,21 +551,36 @@ app.put('/tasks/:id', async (req, res) => {
       });
     }
 
+    // 5. Only Owner and Developer can edit tasks.
     if (!canEditTasks(role)) {
       return res.status(403).json({
         message: 'Viewers cannot edit tasks.'
       });
     }
 
-    // Prevent moving a task to a different project.
-    // This protects dependencies in the original project.
-    if (task.projectId._id.toString() !== projectId.toString()) {
+    // 6. Prevent moving a task to another project.
+    if (task.projectId.toString() !== projectId.toString()) {
       return res.status(400).json({
         message: 'A task cannot be moved to another project when editing.'
       });
     }
-    // Validate dependency IDs, self-dependency,
-    // duplicate dependencies, and project membership.
+
+    // 7. Validate the selected assignee.
+    // If assignedTo is omitted, preserve the existing assignment.
+    // If assignedTo is null or empty, remove the assignment.
+    const assigneeId =
+      assignedTo === undefined ? task.assignedTo : assignedTo || null;
+
+    if (
+      assigneeId &&
+      !isEligibleAssignee(project, assigneeId)
+    ) {
+      return res.status(400).json({
+        message: 'The selected user cannot be assigned to this task.'
+      });
+    }
+
+    // 8. Validate dependencies.
     const dependencyError = await validateDependencies(
       dependencies,
       task._id,
@@ -545,7 +594,7 @@ app.put('/tasks/:id', async (req, res) => {
       });
     }
 
-    // Prevent circular dependencies.
+    // 9. Prevent circular dependencies.
     const createsCycle = await wouldCreateCircularDependency(
       task._id,
       dependencies
@@ -557,7 +606,7 @@ app.put('/tasks/:id', async (req, res) => {
       });
     }
 
-    // Enforce the completion rule on the server.
+    // 10. Enforce the completion rule.
     if (status === 'Completed') {
       const canComplete =
         await dependenciesAreCompleted(dependencies);
@@ -569,22 +618,26 @@ app.put('/tasks/:id', async (req, res) => {
       }
     }
 
-
+    // 11. Update task properties.
     task.title = title.trim();
     task.status = status;
     task.projectId = projectId;
     task.priority = priority;
     task.dueDate = dueDate || undefined;
+    task.assignedTo = assigneeId;
     task.dependencies = dependencies;
 
     await task.save();
 
+    // 12. Populate related information.
     const populatedTask = await task.populate([
       { path: 'projectId', select: 'name' },
-      { path: 'dependencies', select: 'title status priority' }
+      { path: 'dependencies', select: 'title status priority' },
+      { path: 'assignedTo', select: 'name email' }
     ]);
 
     return res.status(200).json(populatedTask);
+
   } catch (error) {
     console.error('Error updating task:', error);
 

@@ -69,26 +69,6 @@
       </p>
 
 
-      @if (successMessage()) {
-        <div
-          class="message success-message"
-          role="status"
-        >
-          {{ successMessage() }}
-        </div>
-      }
-
-
-      @if (errorMessage()) {
-        <div
-          class="message error-message"
-          role="alert"
-        >
-          {{ errorMessage() }}
-        </div>
-      }
-
-
       <form
         (ngSubmit)="saveProfile()"
         #profileForm="ngForm"

@@ -142,11 +142,49 @@
       <span class="status-dot"></span>
       <span class="workspace-status">Workspace active</span>
     </div>
-
     </header>
 
     <section class="page-content">
       <router-outlet />
     </section>
   </main>
+    <!-- Global notifications -->
+    <div class="notification-container" aria-live="polite">
+      @for (notification of notificationService.notifications(); track notification.id) {
+        <div
+          class="notification-toast"
+          [class.toast-success]="notification.type === 'success'"
+          [class.toast-error]="notification.type === 'error'"
+          [class.toast-warning]="notification.type === 'warning'"
+          [class.toast-info]="notification.type === 'info'"
+          role="alert"
+        >
+          <div class="notification-icon">
+            @if (notification.type === 'success') {
+              ✓
+            } @else if (notification.type === 'error') {
+              !
+            } @else if (notification.type === 'warning') {
+              ⚠
+            } @else {
+              i
+            }
+          </div>
+
+          <div class="notification-content">
+            <strong>{{ notification.title }}</strong>
+            <p>{{ notification.message }}</p>
+          </div>
+
+          <button
+            type="button"
+            class="notification-close"
+            aria-label="Dismiss notification"
+            (click)="notificationService.dismiss(notification.id)"
+          >
+            ×
+          </button>
+        </div>
+      }
+</div>
 </div>

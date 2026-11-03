@@ -1,11 +1,11 @@
-
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   DashboardService,
   ProjectStats
 } from '../../services/dashboard';
 import { RouterLink } from '@angular/router';
+import { NotificationService } from '../../services/notification';
 
 @Component({
   selector: 'app-dashboard',
@@ -17,10 +17,11 @@ import { RouterLink } from '@angular/router';
 export class Dashboard implements OnInit {
   readonly pageTitle = 'Dashboard';
   readonly pageSubtitle = 'Track your projects, tasks, and progress in one place.';
+  private readonly notificationService = inject(NotificationService);
+  loadFailed = signal(false);
 
   projectStats = signal<ProjectStats[]>([]);
   loading = signal(true);
-  errorMessage = signal('');
 
   get totalProjects(): number {
     return this.projectStats().length;
@@ -84,7 +85,7 @@ export class Dashboard implements OnInit {
 
   loadProjectStats(): void {
     this.loading.set(true);
-    this.errorMessage.set('');
+    this.loadFailed.set(false);
 
     this.dashboardService.getProjectStats().subscribe({
       next: (data) => {
@@ -93,9 +94,13 @@ export class Dashboard implements OnInit {
       },
       error: (error) => {
         console.error('Failed to load dashboard:', error);
-        this.errorMessage.set(
-          'Unable to load dashboard statistics.'
+
+        this.notificationService.error(
+          error.error?.message || 'Unable to load dashboard statistics.',
+          'Dashboard loading failed'
         );
+
+        this.loadFailed.set(true);
         this.loading.set(false);
       }
     });

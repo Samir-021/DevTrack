@@ -1,5 +1,5 @@
 
-import { Component, signal } from '@angular/core';
+import { Component, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
@@ -9,6 +9,7 @@ import {
   ProjectMember
 } from './project-api';
 import { AuthService } from '../services/auth';
+import { NotificationService } from '../services/notification';
 
 @Component({
   selector: 'app-projects',
@@ -22,9 +23,10 @@ export class Projects {
   projects = signal<Project[]>([]);
   editingProject = signal<Project | null>(null);
   loading = signal(false);
-  errorMessage = signal('');
   memberMessage = signal('');
   currentUserId: string | null;
+  private readonly notificationService = inject(NotificationService);
+
 
   constructor(
     private projectApi: ProjectApi,
@@ -36,7 +38,6 @@ export class Projects {
 
   loadProjects(): void {
     this.loading.set(true);
-    this.errorMessage.set('');
 
     this.projectApi.getProjects().subscribe({
       next: (data) => {
@@ -45,7 +46,10 @@ export class Projects {
       },
       error: (error) => {
         console.error('Failed to load projects:', error);
-        this.errorMessage.set('Unable to load projects. Please try again.');
+        this.notificationService.error(
+          error.error?.message || 'Unable to load projects. Please try again.',
+          'Project loading failed'
+        );
         this.loading.set(false);
       }
     });
@@ -62,23 +66,26 @@ export class Projects {
 
   createProject(name: string, status: string): void {
     if (!name.trim() || !status) {
-      this.errorMessage.set('Please enter a project name and select a status.');
+      this.notificationService.warning(
+        'Please enter a project name and select a status.',
+        'Missing required information'
+      );
       return;
     }
-
-    this.errorMessage.set('');
 
     this.projectApi.createProject({
       name: name.trim(),
       status
     }).subscribe({
       next: () => {
+        this.notificationService.success('Project created successfully.', 'Success');
         this.loadProjects();
       },
       error: (error) => {
         console.error('Failed to create project:', error);
-        this.errorMessage.set(
-          error.error?.message ?? 'Failed to create project.'
+        this.notificationService.error(
+          error.error?.message ?? 'Failed to create project.',
+          'Project creation failed'
         );
       }
     });
@@ -94,19 +101,22 @@ export class Projects {
         if (this.editingProject()?._id === id) {
           this.editingProject.set(null);
         }
+        this.notificationService.success(
+          'Project and its tasks deleted successfully!'
+        );
         this.loadProjects();
       },
       error: (error) => {
         console.error('Failed to delete project:', error);
-        this.errorMessage.set(
-          error.error?.message ?? 'Failed to delete project.'
+        this.notificationService.error(
+          error.error?.message ?? 'Failed to delete project.',
+          'Project deletion failed'
         );
       }
     });
   }
 
   editProject(project: Project): void {
-    this.errorMessage.set('');
     this.editingProject.set(project);
   }
 
@@ -114,11 +124,12 @@ export class Projects {
     const project = this.editingProject();
 
     if (!project || !name.trim() || !status) {
-      this.errorMessage.set('Please enter a project name and select a status.');
+      this.notificationService.warning(
+        'Please enter a project name and select a status.',
+        'Missing required information'
+      );
       return;
     }
-
-    this.errorMessage.set('');
 
     this.projectApi.updateProject(project._id, {
       name: name.trim(),
@@ -126,12 +137,16 @@ export class Projects {
     }).subscribe({
       next: () => {
         this.editingProject.set(null);
+        this.notificationService.success(
+          'Project updated successfully!'
+        );
         this.loadProjects();
       },
       error: (error) => {
         console.error('Failed to update project:', error);
-        this.errorMessage.set(
-          error.error?.message ?? 'Failed to update project.'
+        this.notificationService.error(
+          error.error?.message ?? 'Failed to update project.',
+          'Project update failed'
         );
       }
     });
@@ -139,7 +154,6 @@ export class Projects {
 
   cancelEdit(): void {
     this.editingProject.set(null);
-    this.errorMessage.set('');
   }
 
   getMemberName(member: ProjectMember): string {
@@ -158,12 +172,18 @@ export class Projects {
     const normalizedEmail = email.trim().toLowerCase();
 
     if (!normalizedEmail) {
-      this.memberMessage.set('Please enter the member email.');
+      this.notificationService.warning(
+        'Please enter the member email.',
+        'Missing member email'
+      );
       return;
     }
 
     if (role !== 'developer' && role !== 'viewer') {
-      this.memberMessage.set('Please select a valid role.');
+      this.notificationService.warning(
+        'Please select a valid role.',
+        'Invalid member role'
+      );
       return;
     }
 
@@ -175,14 +195,21 @@ export class Projects {
       role as ProjectRole
     ).subscribe({
       next: (response) => {
-        this.memberMessage.set(response.message);
+        this.memberMessage.set('');
+        this.notificationService.success(
+          response.message,
+          'Member added'
+        );
         this.loadProjects();
       },
       error: (error) => {
-        this.memberMessage.set(
-          error.error?.message ?? 'Failed to add member.'
-        );
         console.error('Failed to add member:', error);
+
+        this.memberMessage.set('');
+        this.notificationService.error(
+          error.error?.message ?? 'Failed to add member.',
+          'Member addition failed'
+        );
       }
     });
   }
@@ -206,14 +233,21 @@ export class Projects {
 
     this.projectApi.removeMember(projectId, userId).subscribe({
       next: (response) => {
-        this.memberMessage.set(response.message);
+        this.memberMessage.set('');
+        this.notificationService.success(
+          response.message,
+          'Member removed'
+        );
         this.loadProjects();
       },
       error: (error) => {
-        this.memberMessage.set(
-          error.error?.message ?? 'Failed to remove member.'
-        );
         console.error('Failed to remove member:', error);
+
+        this.memberMessage.set('');
+        this.notificationService.error(
+          error.error?.message ?? 'Failed to remove member.',
+          'Member removal failed'
+        );
       }
     });
   }

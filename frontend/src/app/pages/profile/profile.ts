@@ -1,7 +1,9 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, Inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AuthService } from '../../services/auth';
+import { NotificationService } from '../../services/notification';
+
 
 @Component({
   selector: 'app-profile',
@@ -16,11 +18,10 @@ export class Profile {
   protected readonly name = signal('');
   protected readonly email = signal('');
   protected readonly saving = signal(false);
-  protected readonly successMessage = signal('');
-  protected readonly errorMessage = signal('');
   protected readonly profileImage = signal('');
   protected readonly imagePreview = signal('');
   protected readonly uploadingImage = signal(false);
+  private readonly notificationService = inject(NotificationService);
 
   constructor() {
     const user = this.authService.getUser();
@@ -37,33 +38,33 @@ export class Profile {
       return;
     }
 
-    this.successMessage.set('');
-    this.errorMessage.set('');
-
     const name = this.name().trim();
     const email = this.email().trim().toLowerCase();
 
     if (name.length < 2 || name.length > 80) {
-      this.errorMessage.set(
-        'Name must be between 2 and 80 characters.'
+      this.notificationService.warning(
+        'Name must be between 2 and 80 characters.',
+        'Invalid name'
       );
       return;
     }
-      const atIndex = email.indexOf('@');
-      const lastDotIndex = email.lastIndexOf('.');
 
-      const isValidEmail =
-        atIndex > 0 &&
-        lastDotIndex > atIndex + 1 &&
-        lastDotIndex < email.length - 1 &&
-        !/\s/.test(email);
+    const atIndex = email.indexOf('@');
+    const lastDotIndex = email.lastIndexOf('.');
 
-      if (email.length > 254 || !isValidEmail) {
-        this.errorMessage.set(
-          'Enter a valid email address.'
-        );
-        return;
-      }
+    const isValidEmail =
+      atIndex > 0 &&
+      lastDotIndex > atIndex + 1 &&
+      lastDotIndex < email.length - 1 &&
+      !/\s/.test(email);
+
+    if (email.length > 254 || !isValidEmail) {
+      this.notificationService.warning(
+        'Enter a valid email address.',
+        'Invalid email'
+      );
+      return;
+    }
 
     this.saving.set(true);
 
@@ -72,14 +73,19 @@ export class Profile {
         this.name.set(response.user.name);
         this.email.set(response.user.email);
 
-        this.successMessage.set(response.message);
+        this.notificationService.success(
+          response.message || 'Your profile has been updated.',
+          'Profile updated'
+        );
+
         this.saving.set(false);
       },
 
       error: (error: HttpErrorResponse) => {
-        this.errorMessage.set(
+        this.notificationService.error(
           error.error?.message ??
-          'Unable to update your profile. Please try again.'
+            'Unable to update your profile. Please try again.',
+          'Profile update failed'
         );
 
         this.saving.set(false);
@@ -103,21 +109,20 @@ export class Profile {
     ];
 
     if (!allowedTypes.includes(file.type)) {
-      this.errorMessage.set(
-        'Only JPG, PNG, and WebP images are allowed.'
+      this.notificationService.warning(
+        'Only JPG, PNG, and WebP images are allowed.',
+        'Unsupported image format'
       );
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      this.errorMessage.set(
-        'Image must be 5 MB or smaller.'
+      this.notificationService.warning(
+        'Image must be 5 MB or smaller.',
+        'Image too large'
       );
       return;
     }
-
-    this.errorMessage.set('');
-    this.successMessage.set('');
 
     const reader = new FileReader();
 
@@ -137,17 +142,19 @@ export class Profile {
 
         this.imagePreview.set('');
 
-        this.successMessage.set(
-          'Profile picture uploaded successfully.'
+        this.notificationService.success(
+          'Profile picture uploaded successfully.',
+          'Profile picture updated'
         );
 
         this.uploadingImage.set(false);
       },
 
       error: (error: HttpErrorResponse) => {
-        this.errorMessage.set(
+        this.notificationService.error(
           error.error?.message ??
-          'Unable to upload profile picture. Please try again.'
+            'Unable to upload profile picture. Please try again.',
+          'Profile picture upload failed'
         );
 
         this.uploadingImage.set(false);
