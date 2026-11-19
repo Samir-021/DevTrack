@@ -7,8 +7,11 @@ import dns from 'dns';
 import { Project } from './models/project.js';
 import { Task } from './models/task.js';
 import authRoutes from './routes/authRoutes.js';
+import contributionRoutes from './routes/contributionRoutes.js';
 import { authenticate } from './middleware/authMiddleware.js';
 import { User } from './models/user.js';
+import { recordProjectActivity } from './utils/activityLogger.js';
+import { logTaskUpdateActivities } from './utils/taskDiff.js';
 
 const app = express();
 
@@ -56,6 +59,8 @@ app.get('/auth/me', authenticate, (req, res) => {
 
 // Protect all API routes registered below this line.
 app.use(authenticate);
+
+app.use('/contributions', contributionRoutes);
 
 async function getProjectAccess(projectId, userId) {
   const project = await Project.findById(projectId)
@@ -135,10 +140,20 @@ app.post('/projects', async (req, res) => {
     }
 
     const project = await Project.create({
-      name,
+      name: name.trim(),
       status,
       owner: req.user._id
     });
+
+    try {
+      await recordProjectActivity({
+        project,
+        actor: req.user,
+        action: 'PROJECT_CREATED'
+      });
+    } catch (actErr) {
+      console.error('Failed to log project creation activity:', actErr);
+    }
 
     res.status(201).json(project);
   } catch (error) {
@@ -159,25 +174,43 @@ app.put('/projects/:id', async (req, res) => {
       });
     }
 
-    const project = await Project.findOneAndUpdate(
-      {
-        _id: req.params.id,
-        owner: req.user._id
-      },
-      { name, status },
-      {
-        new: true,
-        runValidators: true
-      }
-    );
+    const existingProject = await Project.findOne({
+      _id: req.params.id,
+      owner: req.user._id
+    });
 
-    if (!project) {
+    if (!existingProject) {
       return res.status(404).json({
         message: 'Project not found or you do not have permission to update it.'
       });
     }
 
-    res.json(project);
+    const changes = [];
+    if (existingProject.name !== name.trim()) {
+      changes.push({ field: 'name', from: existingProject.name, to: name.trim() });
+    }
+    if (existingProject.status !== status) {
+      changes.push({ field: 'status', from: existingProject.status, to: status });
+    }
+
+    existingProject.name = name.trim();
+    existingProject.status = status;
+    await existingProject.save();
+
+    if (changes.length > 0) {
+      try {
+        await recordProjectActivity({
+          project: existingProject,
+          actor: req.user,
+          action: 'PROJECT_UPDATED',
+          changes
+        });
+      } catch (actErr) {
+        console.error('Failed to log project update activity:', actErr);
+      }
+    }
+
+    res.json(existingProject);
   } catch (error) {
     console.error('Update project error:', error);
 
@@ -204,6 +237,16 @@ app.delete('/projects/:id', async (req, res) => {
       return res.status(404).json({
         message: 'Project not found or you do not have permission to delete it.'
       });
+    }
+
+    try {
+      await recordProjectActivity({
+        project,
+        actor: req.user,
+        action: 'PROJECT_DELETED'
+      });
+    } catch (actErr) {
+      console.error('Failed to log project deletion activity:', actErr);
     }
 
     await Task.deleteMany({
@@ -457,6 +500,31 @@ app.post('/tasks', async (req, res) => {
       { path: 'assignedTo', select: 'name email' }
     ]);
 
+    // 10. Record activity
+    try {
+      await recordProjectActivity({
+        project,
+        actor: req.user,
+        action: 'TASK_CREATED',
+        task,
+        relatedUserIds: assigneeId ? [assigneeId] : []
+      });
+
+      if (assigneeId) {
+        const assigneeName = populatedTask.assignedTo?.name || assigneeId;
+        await recordProjectActivity({
+          project,
+          actor: req.user,
+          action: 'TASK_ASSIGNED',
+          task,
+          relatedUserIds: [assigneeId],
+          changes: [{ field: 'assignedTo', from: null, to: assigneeName }]
+        });
+      }
+    } catch (actErr) {
+      console.error('Failed to log task creation activity:', actErr);
+    }
+
     return res.status(201).json(populatedTask);
 
   } catch (error) {
@@ -618,7 +686,26 @@ app.put('/tasks/:id', async (req, res) => {
       }
     }
 
-    // 11. Update task properties.
+    // 11. Record update activities
+    try {
+      await logTaskUpdateActivities({
+        project,
+        actor: req.user,
+        existingTask: task,
+        updates: {
+          title,
+          status,
+          priority,
+          dueDate,
+          assignedTo: assigneeId,
+          dependencies
+        }
+      });
+    } catch (actErr) {
+      console.error('Failed to log task update activity:', actErr);
+    }
+
+    // 12. Update task properties.
     task.title = title.trim();
     task.status = status;
     task.projectId = projectId;
@@ -629,7 +716,7 @@ app.put('/tasks/:id', async (req, res) => {
 
     await task.save();
 
-    // 12. Populate related information.
+    // 13. Populate related information.
     const populatedTask = await task.populate([
       { path: 'projectId', select: 'name' },
       { path: 'dependencies', select: 'title status priority' },
@@ -676,6 +763,20 @@ app.delete('/tasks/:id', async (req, res) => {
       return res.status(403).json({
         message: 'Viewers cannot delete tasks.'
       });
+    }
+
+    // Record task deletion activity before removing the task
+    try {
+      await recordProjectActivity({
+        project,
+        actor: req.user,
+        action: 'TASK_DELETED',
+        task,
+        taskTitleSnapshot: task.title,
+        relatedUserIds: task.assignedTo ? [task.assignedTo] : []
+      });
+    } catch (actErr) {
+      console.error('Failed to log task deletion activity:', actErr);
     }
 
     // Remove references to this task from other tasks
@@ -828,6 +929,18 @@ app.post('/projects/:id/members', async (req, res) => {
 
     await project.save();
 
+    try {
+      await recordProjectActivity({
+        project,
+        actor: req.user,
+        action: 'MEMBER_ADDED',
+        relatedUserIds: [user._id],
+        changes: [{ field: 'members', from: null, to: { user: user._id, role } }]
+      });
+    } catch (actErr) {
+      console.error('Failed to log member addition activity:', actErr);
+    }
+
     await project.populate([
       { path: 'owner', select: 'name email' },
       { path: 'members.user', select: 'name email' }
@@ -891,6 +1004,18 @@ app.delete('/projects/:id/members/:userId', async (req, res) => {
     project.members.splice(memberIndex, 1);
 
     await project.save();
+
+    try {
+      await recordProjectActivity({
+        project,
+        actor: req.user,
+        action: 'MEMBER_REMOVED',
+        relatedUserIds: [userId],
+        changes: [{ field: 'members', from: userId, to: null }]
+      });
+    } catch (actErr) {
+      console.error('Failed to log member removal activity:', actErr);
+    }
 
     // Return the updated project with populated user details.
     await project.populate([

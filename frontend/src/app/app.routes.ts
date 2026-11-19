@@ -8,6 +8,7 @@ import { Register } from './pages/register/register';
 import { AppLayout } from './layout/app-layout/app-layout';
 import { authGuard } from './guards/auth-guard';
 import { Profile } from './pages/profile/profile';
+import { Contributions } from './pages/contributions/contributions';
 
 export const routes: Routes = [
   {
@@ -34,6 +35,10 @@ export const routes: Routes = [
       {
         path: 'tasks',
         component: Tasks
+      },
+      {
+        path: 'contributions',
+        component: Contributions
       },
       { path: 'profile', component: Profile },
       {

@@ -1,0 +1,375 @@
+<div class="contributions-container">
+  <!-- Page Header -->
+  <header class="page-header">
+    <div class="header-titles">
+      <h1 class="page-title">Developer Contributions</h1>
+      <p class="page-subtitle">
+        Track individual team member output, verify completed task distribution, and explore chronological project audit events.
+      </p>
+    </div>
+
+    <div class="header-summary">
+      <div class="summary-pill">
+        <span class="pill-label">Total Projects</span>
+        <span class="pill-value">{{ totalProjectsCount() }}</span>
+      </div>
+      <div class="summary-pill">
+        <span class="pill-label">Completed Tasks</span>
+        <span class="pill-value">{{ totalCompletedTasks() }}</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Filter Toolbar -->
+  <section class="filters-card">
+    <div class="filters-grid">
+      <!-- Project Filter -->
+      <div class="filter-group">
+        <label for="filter-project" class="filter-label">Project</label>
+        <select
+          id="filter-project"
+          class="filter-select"
+          [value]="selectedProjectId()"
+          (change)="onProjectFilterChange($event)"
+        >
+          <option value="">All Projects</option>
+          @for (p of filterOptions()?.projects; track p._id) {
+            <option [value]="p._id">{{ p.name }}</option>
+          }
+        </select>
+      </div>
+
+      <!-- Developer Filter -->
+      <div class="filter-group">
+        <label for="filter-developer" class="filter-label">Developer</label>
+        <select
+          id="filter-developer"
+          class="filter-select"
+          [value]="selectedDeveloperId()"
+          (change)="onDeveloperFilterChange($event)"
+        >
+          <option value="">All Team Members</option>
+          @for (d of filterOptions()?.developers; track d._id) {
+            <option [value]="d._id">{{ d.name }}</option>
+          }
+        </select>
+      </div>
+
+      <!-- Event Type Filter -->
+      <div class="filter-group">
+        <label for="filter-action" class="filter-label">Event Type</label>
+        <select
+          id="filter-action"
+          class="filter-select"
+          [value]="selectedAction()"
+          (change)="onActionFilterChange($event)"
+        >
+          <option value="All">All Event Types</option>
+          @for (act of filterOptions()?.actionTypes; track act.key) {
+            <option [value]="act.key">{{ act.label }}</option>
+          }
+        </select>
+      </div>
+
+      <!-- Start Date Filter -->
+      <div class="filter-group">
+        <label for="filter-start-date" class="filter-label">From Date</label>
+        <input
+          id="filter-start-date"
+          type="date"
+          class="filter-input"
+          [value]="startDate()"
+          (change)="onStartDateChange($event)"
+        />
+      </div>
+
+      <!-- End Date Filter -->
+      <div class="filter-group">
+        <label for="filter-end-date" class="filter-label">To Date</label>
+        <input
+          id="filter-end-date"
+          type="date"
+          class="filter-input"
+          [value]="endDate()"
+          (change)="onEndDateChange($event)"
+        />
+      </div>
+    </div>
+
+    <div class="filters-actions">
+      <button
+        type="button"
+        class="btn-reset"
+        (click)="resetFilters()"
+        title="Reset all filters"
+      >
+        <span>↺</span> Reset Filters
+      </button>
+    </div>
+  </section>
+
+  <!-- Section 1: Collapsible Project Cards -->
+  <section class="projects-section">
+    <div class="section-header">
+      <h2 class="section-title">Project Contributions & Team Metrics</h2>
+      <span class="section-count">{{ projectContributions().length }} active projects</span>
+    </div>
+
+    @if (loading()) {
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading project contribution data...</p>
+      </div>
+    } @else if (projectContributions().length === 0) {
+      <div class="empty-state">
+        <span class="empty-icon">▣</span>
+        <h3>No projects found</h3>
+        <p>You don't have access to any projects or none match your current search.</p>
+      </div>
+    } @else {
+      <div class="projects-list">
+        @for (project of projectContributions(); track project._id) {
+          <div
+            class="project-card"
+            [class.collapsed]="isProjectCollapsed(project._id)"
+          >
+            <!-- Card Header / Collapsible Trigger -->
+            <div
+              class="card-header"
+              (click)="toggleProjectCollapse(project._id)"
+              role="button"
+              [attr.aria-expanded]="!isProjectCollapsed(project._id)"
+              tabindex="0"
+              (keydown.enter)="toggleProjectCollapse(project._id)"
+            >
+              <div class="header-left">
+                <span class="collapse-icon">
+                  {{ isProjectCollapsed(project._id) ? '▶' : '▼' }}
+                </span>
+                <div class="project-info">
+                  <h3 class="project-name">{{ project.name }}</h3>
+                  <div class="project-badges">
+                    <span class="badge-status">{{ project.status }}</span>
+                    <span class="badge-role" [class.role-owner]="project.userRole === 'owner'">
+                      {{ project.userRole }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="header-right">
+                <div class="progress-container">
+                  <div class="progress-labels">
+                    <span class="progress-title">Overall Progress</span>
+                    <span class="progress-percent">{{ project.overallCompletionPercentage }}%</span>
+                  </div>
+                  <div class="progress-bar-bg">
+                    <div
+                      class="progress-bar-fill"
+                      [style.width.%]="project.overallCompletionPercentage"
+                    ></div>
+                  </div>
+                  <span class="progress-meta">
+                    {{ project.completedTasks }} / {{ project.totalTasks }} tasks completed
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Card Body / Team Member Contribution Breakdown -->
+            @if (!isProjectCollapsed(project._id)) {
+              <div class="card-body">
+                <h4 class="team-section-title">Team Member Output & Task Share</h4>
+
+                @if (project.team.length === 0) {
+                  <p class="no-members-text">No team members assigned to this project.</p>
+                } @else {
+                  <div class="team-grid">
+                    @for (member of project.team; track member.userId) {
+                      <div class="member-card">
+                        <!-- Member Header -->
+                        <div class="member-header">
+                          <div class="member-avatar">
+                            @if (member.profileImage) {
+                              <img [src]="member.profileImage" [alt]="member.name" />
+                            } @else {
+                              <span>{{ getInitials(member.name) }}</span>
+                            }
+                          </div>
+                          <div class="member-meta">
+                            <span class="member-name">{{ member.name }}</span>
+                            <span class="member-email">{{ member.email }}</span>
+                          </div>
+                          <span class="member-role-badge" [class.role-owner]="member.role === 'owner'">
+                            {{ member.role }}
+                          </span>
+                        </div>
+
+                        <!-- Contribution Share Progress -->
+                        <div class="contribution-share-box">
+                          <div class="share-header">
+                            <span class="share-label">Completed Task Share</span>
+                            <span class="share-value">{{ member.contributionPercentage }}%</span>
+                          </div>
+                          <div class="share-bar-bg">
+                            <div
+                              class="share-bar-fill"
+                              [style.width.%]="member.contributionPercentage"
+                            ></div>
+                          </div>
+                          <div class="share-subtext">
+                            <strong>{{ member.completedTasksCount }}</strong> completed of {{ project.completedTasks }} team completed tasks
+                          </div>
+                        </div>
+
+                        <!-- Activity Breakdown Counters -->
+                        <div class="member-activities">
+                          <span class="activity-counter counter-created" title="Tasks created by this member">
+                            <span class="counter-num">{{ member.activities.created }}</span>
+                            <span class="counter-tag">Created</span>
+                          </span>
+
+                          <span class="activity-counter counter-updated" title="Tasks updated by this member">
+                            <span class="counter-num">{{ member.activities.updated }}</span>
+                            <span class="counter-tag">Updated</span>
+                          </span>
+
+                          <span class="activity-counter counter-assigned" title="Assignments involving this member">
+                            <span class="counter-num">{{ member.activities.assigned }}</span>
+                            <span class="counter-tag">Assigned</span>
+                          </span>
+
+                          <span class="activity-counter counter-completed" title="Task completions by this member">
+                            <span class="counter-num">{{ member.activities.completed }}</span>
+                            <span class="counter-tag">Completed</span>
+                          </span>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+  </section>
+
+  <!-- Section 2: Chronological Activity Timeline -->
+  <section class="timeline-section">
+    <div class="section-header">
+      <div class="timeline-header-title">
+        <h2 class="section-title">Project Activity Timeline & Audit Feed</h2>
+        <span class="section-count">{{ totalActivities() }} total events recorded</span>
+      </div>
+    </div>
+
+    @if (timelineLoading()) {
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <p>Updating timeline events...</p>
+      </div>
+    } @else if (activities().length === 0) {
+      <div class="empty-state">
+        <span class="empty-icon">⏱</span>
+        <h3>No activity records match your filters</h3>
+        <p>Try resetting filters or adjusting date ranges to inspect historical actions.</p>
+      </div>
+    } @else {
+      <div class="timeline-wrapper">
+        <div class="timeline-rail"></div>
+
+        <div class="timeline-events">
+          @for (activity of activities(); track activity._id) {
+            <article class="timeline-item">
+              <!-- Event Dot -->
+              <div class="timeline-dot" [ngClass]="getActionBadgeClass(activity.action)"></div>
+
+              <!-- Event Card -->
+              <div class="timeline-card">
+                <div class="timeline-card-header">
+                  <div class="actor-info">
+                    <div class="actor-avatar">
+                      @if (activity.actor?.profileImage) {
+                        <img [src]="activity.actor.profileImage" [alt]="activity.actorNameSnapshot" />
+                      } @else {
+                        <span>{{ getInitials(activity.actorNameSnapshot) }}</span>
+                      }
+                    </div>
+                    <span class="actor-name">{{ activity.actorNameSnapshot }}</span>
+                  </div>
+
+                  <span class="timeline-badge" [ngClass]="getActionBadgeClass(activity.action)">
+                    {{ getActionLabel(activity.action) }}
+                  </span>
+
+                  <time class="timeline-time" [title]="activity.createdAt">
+                    {{ getRelativeTime(activity.createdAt) }}
+                  </time>
+                </div>
+
+                <!-- Event Description -->
+                <div class="timeline-card-content">
+                  <p class="timeline-description">
+                    <strong>{{ activity.actorNameSnapshot }}</strong>
+                    performed
+                    <span class="action-highlight">{{ getActionLabel(activity.action) }}</span>
+                    @if (activity.taskTitleSnapshot) {
+                      on task <span class="entity-highlight">"{{ activity.taskTitleSnapshot }}"</span>
+                    }
+                    in project <span class="project-tag">#{{ activity.projectNameSnapshot }}</span>
+                  </p>
+
+                  <!-- Changes Diff Inspection -->
+                  @if (activity.changes && activity.changes.length > 0) {
+                    <div class="changes-diff-box">
+                      <span class="diff-title">Modified attributes:</span>
+                      <ul class="diff-list">
+                        @for (change of activity.changes; track change.field) {
+                          <li class="diff-item">
+                            <span class="field-name">{{ formatFieldName(change.field) }}:</span>
+                            <span class="from-val">{{ formatValue(change.field, change.from, activity) }}</span>
+                            <span class="diff-arrow">➔</span>
+                            <span class="to-val">{{ formatValue(change.field, change.to, activity) }}</span>
+                          </li>
+                        }
+                      </ul>
+                    </div>
+                  }
+                </div>
+              </div>
+            </article>
+          }
+        </div>
+      </div>
+
+      <!-- Pagination Controls -->
+      @if (totalPages() > 1) {
+        <nav class="pagination-nav" aria-label="Timeline pagination">
+          <button
+            type="button"
+            class="page-btn"
+            [disabled]="currentPage() === 1"
+            (click)="goToPage(currentPage() - 1)"
+          >
+            Previous
+          </button>
+
+          <span class="page-indicator">
+            Page {{ currentPage() }} of {{ totalPages() }}
+          </span>
+
+          <button
+            type="button"
+            class="page-btn"
+            [disabled]="currentPage() === totalPages()"
+            (click)="goToPage(currentPage() + 1)"
+          >
+            Next
+          </button>
+        </nav>
+      }
+    }
+  </section>
+</div>
